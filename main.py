@@ -84,7 +84,10 @@ def isi_kuesioner(url, data_user):
         
         radiogroups_h2 = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
         opsi_peran = radiogroups_h2[0].find_elements(By.XPATH, ".//div[@role='radio']")
-        driver.execute_script("arguments[0].click();", random.choice(opsi_peran))
+        
+        # --- PERUBAHAN DI SINI ---
+        # Memilih opsi ke-3 yaitu "Masyarakat Umum" (Index 2)
+        driver.execute_script("arguments[0].click();", opsi_peran[2])
         
         checkboxes = driver.find_elements(By.XPATH, "//div[@role='checkbox']")
         pilihan_terpilih = random.sample(checkboxes, random.randint(1, 3))
