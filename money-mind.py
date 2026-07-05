@@ -13,7 +13,7 @@ from selenium.webdriver.chrome.options import Options
 # ==========================================
 
 # URL Google Form yang ingin diisi (GANTI dengan link form Anda)
-LINK_FORM = ''
+LINK_FORM = os.getenv('MONEY_MIND_GOOGLE_FORM_URL', '')
 
 # Nama file CSV yang berisi data responden
 NAMA_FILE_CSV = 'data_responden.csv'

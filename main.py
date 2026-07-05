@@ -13,7 +13,7 @@ from selenium.webdriver.chrome.options import Options
 # ==========================================
 
 # URL Google Form yang ingin diisi
-LINK_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc_2z6L6Wmc47NSBPBtf5WObBzE9MXobGTu4rNsc6MCgj4ytg/viewform'
+LINK_FORM = ''
 
 # Nama file CSV yang berisi data responden
 NAMA_FILE_CSV = 'data_responden.csv'
