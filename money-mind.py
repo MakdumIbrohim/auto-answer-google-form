@@ -8,109 +8,159 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
-# Konfigurasi Browser
-chrome_options = Options()
-chrome_options.add_argument("--start-maximized")
-# chrome_options.add_argument("--headless") # Aktifkan jika tidak ingin melihat browser terbuka
+# ==========================================
+# PENGATURAN - EDIT SESUAI KEBUTUHAN ANDA
+# ==========================================
 
-link_form = ''
-file_csv = 'data_responden.csv'
+# URL Google Form yang ingin diisi (GANTI dengan link form Anda)
+LINK_FORM = ''
 
-# 1. Memeriksa keberadaan file CSV
-if not os.path.exists(file_csv):
-    print(f"[ERROR] File '{file_csv}' tidak ditemukan. Pastikan file berada di folder yang sama.")
-    exit()
+# Nama file CSV yang berisi data responden
+NAMA_FILE_CSV = 'data_responden.csv'
 
-# 2. Membaca data nama dari CSV
-data_responden = []
-with open(file_csv, mode='r', encoding='utf-8-sig') as file:
-    csv_reader = csv.DictReader(file)
-    for row in csv_reader:
-        if row.get('nama') and row['nama'].strip(): # Pastikan kolom nama ada dan tidak kosong
-            data_responden.append(row['nama'].strip())
+# Nama kolom di dalam file CSV
+KOLOM_NAMA = 'nama'
 
-print(f"[INFO] Ditemukan {len(data_responden)} data responden. Memulai otomatisasi...\n")
+# ==========================================
+# PENGATURAN LANJUTAN (BIASANYA TIDAK PERLU DIUBAH)
+# ==========================================
 
-# 3. Inisialisasi WebDriver di LUAR loop agar lebih cepat dan hemat RAM
-driver = webdriver.Chrome(options=chrome_options)
-wait = WebDriverWait(driver, 10)
+# Konfigurasi browser Chrome
+OPSI_CHROME = Options()
+OPSI_CHROME.add_argument("--start-maximized")
+# Hapus tanda # di bawah jika ingin browser tidak terbuka (background)
+# OPSI_CHROME.add_argument("--headless")
+
+# Batas waktu menunggu elemen form muncul (detik)
+BATAS_WAKTU = 10
+
+
+# ==========================================
+# FUNGSI-FUNGSI BANTUAN
+# ==========================================
+
+def buat_driver():
+    """Membuat browser Chrome baru."""
+    return webdriver.Chrome(options=OPSI_CHROME)
+
+
+def cek_file_csv(path_file):
+    """Memeriksa apakah file CSV tersedia."""
+    if not os.path.exists(path_file):
+        print(f"[ERROR] File CSV '{path_file}' tidak ditemukan!")
+        print("Pastikan file berada di folder yang sama dengan program ini.")
+        exit()
+
+
+def baca_data_csv(path_file, kolom_nama):
+    """Membaca data responden dari file CSV."""
+    data = []
+    with open(path_file, mode='r', encoding='utf-8-sig') as file:
+        pembaca = csv.DictReader(file)
+        for baris in pembaca:
+            if baris.get(kolom_nama) and baris[kolom_nama].strip():
+                data.append(baris[kolom_nama].strip())
+    return data
+
+
+def klik_tombol(driver, teks_tombol):
+    """Mengklik tombol berdasarkan teks yang ada di tombol."""
+    xpath = f"//div[@role='button']//span[text()='{teks_tombol}']"
+    tombol = driver.find_element(By.XPATH, xpath)
+    driver.execute_script("arguments[0].click();", tombol)
+
+
+# ==========================================
+# ISI KUESIONER
+# ==========================================
 
 def isi_kuesioner(url, nama_responden):
+    driver = buat_driver()
+    tunggu = WebDriverWait(driver, BATAS_WAKTU)
+
     try:
+        # Buka form
         driver.get(url)
-        time.sleep(2) 
-        
-        # ==========================================
-        # HALAMAN 1: IDENTITAS
-        # ==========================================
-        print(f"[{nama_responden}] Mengisi Halaman 1...")
-        
-        # 1. Input Nama Lengkap
-        input_nama = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@type='text']")))
-        input_nama.send_keys(nama_responden)
-        
-        # Ambil semua grup radio button di Halaman 1
-        radiogroups_h1 = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
-        
-        # 2. Pilih Usia Secara Acak (Index 0: <20, Index 1: 20-30, Index 2: >30)
-        opsi_usia = radiogroups_h1[0].find_elements(By.XPATH, ".//div[@role='radio']")
-        driver.execute_script("arguments[0].click();", random.choice(opsi_usia))
-        
-        # 3. Pilih Pekerjaan Secara Acak (Index 0 s.d 3 untuk menghindari pilihan manual 'Yang lain')
-        opsi_pekerjaan = radiogroups_h1[1].find_elements(By.XPATH, ".//div[@role='radio']")
-        # Memilih acak antara Pelajar, Karyawan, PNS, atau Wiraswasta
-        driver.execute_script("arguments[0].click();", random.choice(opsi_pekerjaan[:4]))
-        
-        # Klik Tombol Berikutnya
-        btn_next = driver.find_element(By.XPATH, "//div[@role='button']//span[text()='Berikutnya' or text()='Next']")
-        driver.execute_script("arguments[0].click();", btn_next)
-        
-        # ==========================================
-        # HALAMAN 2: KUESIONER UTAMA (SUS)
-        # ==========================================
-        print(f"[{nama_responden}] Mengisi Halaman 2 (Skala SUS)...")
-        time.sleep(2) 
-        
-        # Tunggu sampai radio button halaman 2 termuat
-        wait.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
-        
-        # Ada 10 baris pertanyaan SUS di halaman ini
-        pertanyaan_sus = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
-        
-        for index, baris in enumerate(pertanyaan_sus):
-            opsi_skala = baris.find_elements(By.XPATH, ".//div[@role='radio']")
-            
-            # Strategi Pengisian SUS Acak yang Realistis:
-            # Pertanyaan Ganjil (1,3,5,7,9) bernada positif -> cenderung skor tinggi (4 atau 5)
-            # Pertanyaan Genap (2,4,6,8,10) bernada negatif -> cenderung skor rendah (1 atau 2)
-            if (index + 1) % 2 != 0:
-                pilihan_skala = random.choice([opsi_skala[3], opsi_skala[4]]) # Nilai 4 atau 5
-            else:
-                pilihan_skala = random.choice([opsi_skala[0], opsi_skala[1]]) # Nilai 1 atau 2
-                
-            driver.execute_script("arguments[0].click();", pilihan_skala)
-            
-        # Jeda acak tipis agar terlihat natural sebelum submit
-        time.sleep(random.uniform(1.0, 2.5))
-        
-        # Klik Tombol Kirim
-        btn_submit = driver.find_element(By.XPATH, "//div[@role='button']//span[text()='Kirim' or text()='Submit']")
-        driver.execute_script("arguments[0].click();", btn_submit)
-        
-        print(f"[SUKSES] Kuesioner atas nama '{nama_responden}' BERHASIL dikirim!\n")
         time.sleep(2)
-        
+
+        # ===== HALAMAN 1: IDENTITAS =====
+        print(f"[{nama_responden}] Mengisi Halaman 1...")
+
+        # Input nama lengkap
+        input_nama = tunggu.until(EC.presence_of_element_located((By.XPATH, "//input[@type='text']")))
+        input_nama.send_keys(nama_responden)
+
+        # Ambil grup radio button di Halaman 1
+        grup_radio = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
+
+        # Pilih usia secara acak
+        opsi_usia = grup_radio[0].find_elements(By.XPATH, ".//div[@role='radio']")
+        driver.execute_script("arguments[0].click();", random.choice(opsi_usia))
+
+        # Pilih pekerjaan secara acak (hindari pilihan 'Yang lain')
+        opsi_pekerjaan = grup_radio[1].find_elements(By.XPATH, ".//div[@role='radio']")
+        driver.execute_script("arguments[0].click();", random.choice(opsi_pekerjaan[:4]))
+
+        # Klik tombol Berikutnya
+        klik_tombol(driver, "Berikutnya")
+
+        # ===== HALAMAN 2: KUESIONER SUS =====
+        print(f"[{nama_responden}] Mengisi Halaman 2 (Skala SUS)...")
+        time.sleep(2)
+
+        # Tunggu radio button halaman 2 termuat
+        tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+
+        # 10 baris pertanyaan SUS
+        pertanyaan = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
+
+        for index, baris in enumerate(pertanyaan):
+            opsi = baris.find_elements(By.XPATH, ".//div[@role='radio']")
+
+            # Strategi pengisian SUS yang realistis:
+            # Pertanyaan Ganjil (positif) -> skor tinggi (4 atau 5)
+            # Pertanyaan Genap (negatif) -> skor rendah (1 atau 2)
+            if (index + 1) % 2 != 0:
+                pilihan = random.choice([opsi[3], opsi[4]])  # Nilai 4 atau 5
+            else:
+                pilihan = random.choice([opsi[0], opsi[1]])  # Nilai 1 atau 2
+
+            driver.execute_script("arguments[0].click();", pilihan)
+
+        # Jeda acak agar terlihat natural
+        time.sleep(random.uniform(1.0, 2.5))
+
+        # Klik tombol Kirim
+        klik_tombol(driver, "Kirim")
+
+        print(f"[SUKSES] Form atas nama '{nama_responden}' BERHASIL dikirim!\n")
+        time.sleep(2)
+
     except Exception as e:
-        print(f"[GAGAL] Terjadi error saat mengisi atas nama '{nama_responden}'.")
+        print(f"[GAGAL] Error saat mengisi form untuk '{nama_responden}'.")
         print(f"Pesan Error: {e}")
-        print("Membuka ulang formulir untuk responden berikutnya...\n")
+        print("Membuka ulang form untuk responden berikutnya...\n")
         time.sleep(5)
 
-# 4. Eksekusi Loop Responden
-for index, nama in enumerate(data_responden):
-    print(f"--- Memproses Responden {index + 1}/{len(data_responden)} ---")
-    isi_kuesioner(link_form, nama)
+    finally:
+        driver.quit()
 
-# Tutup browser setelah semua selesai
-driver.quit()
-print("[SELESAI] Seluruh data CSV telah diproses.")
+
+# ==========================================
+# JALANKAN PROGRAM
+# ==========================================
+
+if __name__ == "__main__":
+    # Cek dan baca data
+    cek_file_csv(NAMA_FILE_CSV)
+    data_responden = baca_data_csv(NAMA_FILE_CSV, KOLOM_NAMA)
+
+    print(f"[INFO] Ditemukan {len(data_responden)} responden. Memulai otomatisasi...\n")
+
+    # Isi form untuk setiap responden
+    for nomor, nama in enumerate(data_responden, 1):
+        print(f"--- Responden {nomor}/{len(data_responden)} ---")
+        isi_kuesioner(LINK_FORM, nama)
+
+    print("[SELESAI] Semua data telah diproses.")
+    input("Tekan Enter untuk keluar...")
