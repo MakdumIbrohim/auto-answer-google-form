@@ -16,11 +16,12 @@ from selenium.webdriver.chrome.options import Options
 LINK_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc_qOMnarp0AI93Nd1WmiWRGrzgpiFsS5MIY_8pZ41Eysr6Vg/viewform?pli=1'
 
 # Nama file CSV yang berisi data responden
-NAMA_FILE_CSV = 'data_responden.csv'
+NAMA_FILE_CSV = 'data_responden_smk_sumber_nangka.csv'
 
 # Nama kolom di dalam file CSV (harus sesuai dengan header CSV)
 KOLOM_NAMA = 'nama'
 KOLOM_KELAMIN = 'kelamin'
+KOLOM_STATUS = 'status'
 
 # ==========================================
 # PENGATURAN LANJUTAN (BIASANYA TIDAK PERLU DIUBAH)
@@ -57,16 +58,17 @@ def cek_file_csv(path_file):
         exit()
 
 
-def baca_data_csv(path_file, kolom_nama, kolom_kelamin):
+def baca_data_csv(path_file, kolom_nama, kolom_kelamin, kolom_status):
     """Membaca data responden dari file CSV."""
     data = []
     with open(path_file, mode='r', encoding='utf-8-sig') as file:
         pembaca = csv.DictReader(file)
         for baris in pembaca:
-            if baris[kolom_nama].strip():
+            if baris.get(kolom_nama, '').strip():
                 data.append({
                     'nama': baris[kolom_nama].strip(),
-                    'kelamin': baris[kolom_kelamin].strip().upper()
+                    'kelamin': baris.get(kolom_kelamin, '').strip().upper(),
+                    'status': baris.get(kolom_status, 'Guru').strip()
                 })
     return data
 
@@ -125,6 +127,7 @@ def isi_halaman_skala(driver):
 
 def isi_kuesioner(url, data_user):
     nama = data_user['nama']
+    status = data_user['status']
 
     driver = buat_driver()
     tunggu = WebDriverWait(driver, BATAS_WAKTU)
@@ -140,8 +143,8 @@ def isi_kuesioner(url, data_user):
         if input_nama:
             input_nama[0].send_keys(nama)
 
-        # Pilih Status (Guru)
-        klik_opsi_teks(driver, "Guru")
+        # Pilih Status (Guru/Siswa)
+        klik_opsi_teks(driver, status)
 
         klik_tombol(driver, "Berikutnya")
         time.sleep(2)
@@ -171,6 +174,18 @@ def isi_kuesioner(url, data_user):
         tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
         print(f"[{nama}] Mengisi Halaman 5 (Evaluasi Pemanfaatan Program)...")
         isi_halaman_skala(driver)
+        
+        # Cek tombol Berikutnya (untuk Guru) atau langsung Kirim (untuk Siswa)
+        tombol_berikutnya = driver.find_elements(By.XPATH, "//div[@role='button']//span[text()='Berikutnya']")
+        if tombol_berikutnya:
+            driver.execute_script("arguments[0].click();", tombol_berikutnya[0])
+            time.sleep(2)
+            
+            # ===== HALAMAN 6: KHUSUS GURU =====
+            tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+            print(f"[{nama}] Mengisi Halaman 6 (Khusus Guru - BIMTEK)...")
+            isi_halaman_skala(driver)
+
         klik_tombol(driver, "Kirim")
 
         print(f"[SUKSES] Form atas nama '{nama}' BERHASIL dikirim!\n")
@@ -194,7 +209,7 @@ if __name__ == "__main__":
     cek_file_csv(NAMA_FILE_CSV)
 
     # Baca data responden
-    data_responden = baca_data_csv(NAMA_FILE_CSV, KOLOM_NAMA, KOLOM_KELAMIN)
+    data_responden = baca_data_csv(NAMA_FILE_CSV, KOLOM_NAMA, KOLOM_KELAMIN, KOLOM_STATUS)
 
     print(f"[INFO] Ditemukan {len(data_responden)} responden. Memulai otomatisasi...\n")
 
