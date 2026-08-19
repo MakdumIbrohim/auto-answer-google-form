@@ -121,8 +121,8 @@ def isi_halaman_skala(driver):
     for baris in baris_skala:
         opsi = baris.find_elements(By.XPATH, ".//div[@role='radio']")
         if len(opsi) >= 5:
-            # Pilihan skor 1, 2, 3 untuk pre-test (indeks 0, 1, 2)
-            idx_pilihan = random.choice([0, 1, 2]) 
+            # Pilihan skor 3, 4, 5 untuk post-test (indeks 2, 3, 4)
+            idx_pilihan = random.choice([2, 3, 4]) 
             driver.execute_script("arguments[0].click();", opsi[idx_pilihan])
 
 def isi_kuesioner(url, data_user):
