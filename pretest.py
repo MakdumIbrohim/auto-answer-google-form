@@ -16,7 +16,7 @@ from selenium.webdriver.chrome.options import Options
 LINK_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc_qOMnarp0AI93Nd1WmiWRGrzgpiFsS5MIY_8pZ41Eysr6Vg/viewform?pli=1'
 
 # Nama file CSV yang berisi data responden
-NAMA_FILE_CSV = 'data_responden_guru.csv'
+NAMA_FILE_CSV = 'data_responden.csv'
 
 # Nama kolom di dalam file CSV (harus sesuai dengan header CSV)
 KOLOM_NAMA = 'nama'
@@ -113,9 +113,18 @@ def klik_tombol(driver, teks_tombol):
 # ISI KUESIONER
 # ==========================================
 
+def isi_halaman_skala(driver):
+    """Mengisi semua radiogroup (skala 1-5) di halaman yang aktif."""
+    baris_skala = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
+    for baris in baris_skala:
+        opsi = baris.find_elements(By.XPATH, ".//div[@role='radio']")
+        if len(opsi) >= 5:
+            # Pilihan skor 1, 2, 3 untuk pre-test (indeks 0, 1, 2)
+            idx_pilihan = random.choice([0, 1, 2]) 
+            driver.execute_script("arguments[0].click();", opsi[idx_pilihan])
+
 def isi_kuesioner(url, data_user):
     nama = data_user['nama']
-    kelamin = data_user['kelamin']
 
     driver = buat_driver()
     tunggu = WebDriverWait(driver, BATAS_WAKTU)
@@ -127,72 +136,41 @@ def isi_kuesioner(url, data_user):
 
         # ===== HALAMAN 1: IDENTITAS =====
         print(f"[{nama}] Mengisi Halaman 1 (Data Diri)...")
-
-        # Input nama
         input_nama = tunggu.until(EC.presence_of_all_elements_located((By.XPATH, "//input[@type='text']")))
         if input_nama:
             input_nama[0].send_keys(nama)
 
-        # Pilih jenis kelamin
-        teks_kelamin = "Lakilaki" if kelamin == 'L' else "Perempuan"
-        klik_opsi_teks(driver, teks_kelamin)
-
-        # Cari semua grup radio di halaman 1 (untuk usia)
-        grup_radio = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
-
-        if len(grup_radio) > 1:
-            # Pilih usia secara acak
-            opsi_usia = grup_radio[1].find_elements(By.XPATH, ".//div[@role='radio']")
-            if opsi_usia:
-                driver.execute_script("arguments[0].click();", random.choice(opsi_usia))
-
-        # Pilih pengalaman dan pekerjaan jika ada di halaman 1
-        klik_opsi_mayoritas(driver, "Pertama kali menggunakan")
+        # Pilih Status (Guru)
         klik_opsi_teks(driver, "Guru")
 
-        # Klik tombol Berikutnya
         klik_tombol(driver, "Berikutnya")
         time.sleep(2)
         
-        try:
-            tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
-            
-            # ===== HALAMAN 2: PERAN DAN INTERES =====
-            print(f"[{nama}] Mengisi Halaman 2...")
+        # ===== HALAMAN 2: EVALUASI KEGIATAN MENGAJAR =====
+        tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+        print(f"[{nama}] Mengisi Halaman 2 (Evaluasi Kegiatan Mengajar)...")
+        isi_halaman_skala(driver)
+        klik_tombol(driver, "Berikutnya")
+        time.sleep(2)
 
-            # Pilih pekerjaan dan pengalaman lagi jika ternyata ada di halaman 2
-            klik_opsi_teks(driver, "Guru")
-            klik_opsi_mayoritas(driver, "Pertama kali menggunakan")
+        # ===== HALAMAN 3: EVALUASI GREENHOUSE DAN HIDROPONIK =====
+        tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+        print(f"[{nama}] Mengisi Halaman 3 (Evaluasi Greenhouse & Hidroponik)...")
+        isi_halaman_skala(driver)
+        klik_tombol(driver, "Berikutnya")
+        time.sleep(2)
 
-            # Pilih checkbox secara acak (1 sampai 3 pilihan)
-            kotak_centang = driver.find_elements(By.XPATH, "//div[@role='checkbox']")
-            if kotak_centang:
-                pilihan = random.sample(kotak_centang, min(random.randint(1, 3), len(kotak_centang)))
-                for kotak in pilihan:
-                    driver.execute_script("arguments[0].click();", kotak)
+        # ===== HALAMAN 4: EVALUASI IOT DAN AI CHATBOT =====
+        tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+        print(f"[{nama}] Mengisi Halaman 4 (Evaluasi IoT & AI Chatbot)...")
+        isi_halaman_skala(driver)
+        klik_tombol(driver, "Berikutnya")
+        time.sleep(2)
 
-            # Klik tombol Berikutnya (ke halaman SUS)
-            klik_tombol(driver, "Berikutnya")
-            time.sleep(2)
-            tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
-        except:
-            pass # Mungkin tidak ada halaman 2, langsung ke SUS
-
-        # ===== HALAMAN 3: SKALA SUS =====
-        print(f"[{nama}] Mengisi Halaman 3 (Skala SUS)...")
-
-        baris_skala = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
-        for baris in baris_skala:
-            opsi = baris.find_elements(By.XPATH, ".//div[@role='radio']")
-            if len(opsi) >= 5:
-                # Opsi index: 0(skor 1), 1(skor 2), 2(skor 3), 3(skor 4), 4(skor 5)
-                # Rule: rata-rata 3, 4, 5. Sedikit 2. Tidak ada 1.
-                idx_pilihan = random.choice([1, 2, 2, 3, 3, 4, 4]) 
-                driver.execute_script("arguments[0].click();", opsi[idx_pilihan])
-            elif len(opsi) > 0:
-                driver.execute_script("arguments[0].click();", random.choice(opsi))
-
-        # Klik tombol Kirim
+        # ===== HALAMAN 5: EVALUASI PEMANFAATAN PROGRAM =====
+        tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+        print(f"[{nama}] Mengisi Halaman 5 (Evaluasi Pemanfaatan Program)...")
+        isi_halaman_skala(driver)
         klik_tombol(driver, "Kirim")
 
         print(f"[SUKSES] Form atas nama '{nama}' BERHASIL dikirim!\n")
@@ -201,8 +179,7 @@ def isi_kuesioner(url, data_user):
     except Exception as e:
         print(f"[GAGAL] Error saat mengisi form untuk '{nama}'.")
         print(f"Pesan Error: {e}")
-        print("Browser dibuka selama 30 detik untuk pengecekan...\n")
-        time.sleep(30)
+        time.sleep(5)
 
     finally:
         driver.quit()
