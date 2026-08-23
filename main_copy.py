@@ -13,10 +13,10 @@ from selenium.webdriver.chrome.options import Options
 # ==========================================
 
 # URL Google Form yang ingin diisi
-LINK_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSc_qOMnarp0AI93Nd1WmiWRGrzgpiFsS5MIY_8pZ41Eysr6Vg/viewform?pli=1'
+LINK_FORM = 'https://forms.gle/vDUC3AtcmeDLtCkn9'
 
 # Nama file CSV yang berisi data responden
-NAMA_FILE_CSV = 'data_responden_guru.csv'
+NAMA_FILE_CSV = 'data_responden_siswa.csv'
 
 # Nama kolom di dalam file CSV (harus sesuai dengan header CSV)
 KOLOM_NAMA = 'nama'
@@ -57,16 +57,20 @@ def cek_file_csv(path_file):
         exit()
 
 
-def baca_data_csv(path_file, kolom_nama, kolom_kelamin):
-    """Membaca data responden dari file CSV."""
+def baca_data_csv(path_file):
+    """Membaca data responden dari file CSV (format khusus)."""
     data = []
     with open(path_file, mode='r', encoding='utf-8-sig') as file:
-        pembaca = csv.DictReader(file)
+        pembaca = csv.reader(file)
+        next(pembaca, None) # skip header
         for baris in pembaca:
-            if baris[kolom_nama].strip():
+            if len(baris) >= 13 and baris[0].strip():
                 data.append({
-                    'nama': baris[kolom_nama].strip(),
-                    'kelamin': baris[kolom_kelamin].strip().upper()
+                    'nama': baris[0].strip(),
+                    'kelamin': baris[1].strip(),
+                    'pekerjaan': baris[2].strip(),
+                    'pengalaman': baris[3].strip(),
+                    'sus': [int(float(x.strip())) for x in baris[4:13] if x.strip()]
                 })
     return data
 
@@ -76,9 +80,18 @@ def klik_opsi_teks(driver, teks):
     try:
         xpath = f"//div[@role='radio' and (contains(@data-value, '{teks}') or contains(., '{teks}'))]"
         opsi = driver.find_elements(By.XPATH, xpath)
+        
+        # Fallback jika perbedaan simbol dash (– vs -)
+        if not opsi:
+            teks_alt = teks.replace('–', '-') if '–' in teks else teks.replace('-', '–')
+            xpath = f"//div[@role='radio' and (contains(@data-value, '{teks_alt}') or contains(., '{teks_alt}'))]"
+            opsi = driver.find_elements(By.XPATH, xpath)
+            
         if opsi:
             driver.execute_script("arguments[0].click();", opsi[0])
-    except:
+        else:
+            print(f"    [WARNING] Opsi '{teks}' tidak ditemukan, form mungkin gagal lanjut!")
+    except Exception as e:
         pass
 
 
@@ -116,6 +129,9 @@ def klik_tombol(driver, teks_tombol):
 def isi_kuesioner(url, data_user):
     nama = data_user['nama']
     kelamin = data_user['kelamin']
+    pekerjaan = data_user['pekerjaan']
+    pengalaman = data_user['pengalaman']
+    sus = data_user['sus']
 
     driver = buat_driver()
     tunggu = WebDriverWait(driver, BATAS_WAKTU)
@@ -134,63 +150,39 @@ def isi_kuesioner(url, data_user):
             input_nama[0].send_keys(nama)
 
         # Pilih jenis kelamin
-        teks_kelamin = "Lakilaki" if kelamin == 'L' else "Perempuan"
-        klik_opsi_teks(driver, teks_kelamin)
+        klik_opsi_teks(driver, kelamin)
 
-        # Cari semua grup radio di halaman 1 (untuk usia)
-        grup_radio = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
+        # Pilih pekerjaan
+        klik_opsi_teks(driver, pekerjaan)
 
-        if len(grup_radio) > 1:
-            # Pilih usia secara acak
-            opsi_usia = grup_radio[1].find_elements(By.XPATH, ".//div[@role='radio']")
-            if opsi_usia:
-                driver.execute_script("arguments[0].click();", random.choice(opsi_usia))
-
-        # Pilih pengalaman dan pekerjaan jika ada di halaman 1
-        klik_opsi_mayoritas(driver, "Pertama kali menggunakan")
-        klik_opsi_teks(driver, "Guru")
+        # Pilih pengalaman
+        klik_opsi_teks(driver, pengalaman)
 
         # Klik tombol Berikutnya
         klik_tombol(driver, "Berikutnya")
         time.sleep(2)
         
-        try:
-            tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
-            
-            # ===== HALAMAN 2: PERAN DAN INTERES =====
-            print(f"[{nama}] Mengisi Halaman 2...")
-
-            # Pilih pekerjaan dan pengalaman lagi jika ternyata ada di halaman 2
-            klik_opsi_teks(driver, "Guru")
-            klik_opsi_mayoritas(driver, "Pertama kali menggunakan")
-
-            # Pilih checkbox secara acak (1 sampai 3 pilihan)
-            kotak_centang = driver.find_elements(By.XPATH, "//div[@role='checkbox']")
-            if kotak_centang:
-                pilihan = random.sample(kotak_centang, min(random.randint(1, 3), len(kotak_centang)))
-                for kotak in pilihan:
-                    driver.execute_script("arguments[0].click();", kotak)
-
-            # Klik tombol Berikutnya (ke halaman SUS)
-            klik_tombol(driver, "Berikutnya")
-            time.sleep(2)
-            tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
-        except:
-            pass # Mungkin tidak ada halaman 2, langsung ke SUS
-
-        # ===== HALAMAN 3: SKALA SUS =====
-        print(f"[{nama}] Mengisi Halaman 3 (Skala SUS)...")
+        # ===== HALAMAN 2: SKALA SUS =====
+        tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+        print(f"[{nama}] Mengisi Halaman 2 (10 Pertanyaan SUS)...")
 
         baris_skala = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
-        for baris in baris_skala:
+        for i, baris in enumerate(baris_skala):
             opsi = baris.find_elements(By.XPATH, ".//div[@role='radio']")
             if len(opsi) >= 5:
-                # Opsi index: 0(skor 1), 1(skor 2), 2(skor 3), 3(skor 4), 4(skor 5)
-                # Rule: rata-rata 3, 4, 5. Sedikit 2. Tidak ada 1.
-                idx_pilihan = random.choice([1, 2, 2, 3, 3, 4, 4]) 
-                driver.execute_script("arguments[0].click();", opsi[idx_pilihan])
-            elif len(opsi) > 0:
-                driver.execute_script("arguments[0].click();", random.choice(opsi))
+                # Ambil jawaban dari CSV, khusus indeks 7 (pertanyaan 8) pakai random
+                if i < 7:
+                    jawaban = sus[i]
+                elif i == 7:
+                    jawaban = random.randint(1, 5)
+                elif i > 7 and (i - 1) < len(sus):
+                    jawaban = sus[i - 1]
+                else:
+                    jawaban = random.randint(1, 5)
+
+                idx_pilihan = jawaban - 1 # opsi indeks 0-4
+                if 0 <= idx_pilihan < len(opsi):
+                    driver.execute_script("arguments[0].click();", opsi[idx_pilihan])
 
         # Klik tombol Kirim
         klik_tombol(driver, "Kirim")
@@ -217,7 +209,7 @@ if __name__ == "__main__":
     cek_file_csv(NAMA_FILE_CSV)
 
     # Baca data responden
-    data_responden = baca_data_csv(NAMA_FILE_CSV, KOLOM_NAMA, KOLOM_KELAMIN)
+    data_responden = baca_data_csv(NAMA_FILE_CSV)
 
     print(f"[INFO] Ditemukan {len(data_responden)} responden. Memulai otomatisasi...\n")
 
