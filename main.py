@@ -8,12 +8,17 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
+from dotenv import load_dotenv
+
+# Muat variabel dari file .env
+load_dotenv()
+
 # ==========================================
 # PENGATURAN - EDIT SESUAI KEBUTUHAN ANDA
 # ==========================================
 
-# URL Google Form yang ingin diisi
-LINK_FORM = ''
+# URL Google Form yang ingin diisi diambil dari .env
+LINK_FORM = os.getenv('LINK_FORM')
 
 # Nama file CSV yang berisi data responden
 NAMA_FILE_CSV = 'data_responden.csv'

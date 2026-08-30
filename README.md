@@ -4,23 +4,32 @@ Project ini adalah script otomatisasi berbasis Python dan Selenium untuk mengisi
 
 ## 🚀 Persyaratan Sistem
 1. Python 3.x terinstal.
-2. Library Selenium: `pip install selenium`
+2. Install library yang dibutuhkan: `pip install -r requirements.txt` (menginstal `selenium` dan `python-dotenv`).
 3. Google Chrome dan ChromeDriver terbaru.
 
 ## 📂 Struktur File Utama
 - `main.py`: Script utama untuk menjalankan otomatisasi pengisian Google Form.
 - `data_responden.csv`: Contoh file data responden sebagai sumber input (sesuaikan nama file di dalam script).
+- `.env.example`: Contoh file konfigurasi environment.
 
 ---
+
+## 🛠️ PENGATURAN AWAL (SETUP)
+
+Sebelum menjalankan script, Anda wajib mengatur tautan (link) Google Form di dalam file environment.
+1. Buat file baru bernama `.env` di folder yang sama (atau copy dari `.env.example`).
+2. Isi file `.env` dengan format berikut:
+   ```env
+   LINK_FORM=https://forms.gle/LinkAndaDisini
+   ```
 
 ## 🛠️ PANDUAN MODIFIKASI KODE (CARA MENGUBAH INPUT)
 
 Jika form Anda memiliki pertanyaan yang baru atau tata letaknya berubah, berikut adalah referensi kode ("cheat sheet") untuk melakukan modifikasi di dalam script.
 
-### 1. Mengubah Link Form dan File CSV
-Di bagian atas setiap script, terdapat variabel pengaturan utama.
+### 1. Mengubah File CSV
+Di bagian atas script `main.py`, terdapat variabel pengaturan file CSV.
 ```python
-LINK_FORM = 'https://forms.gle/ContohLink'
 NAMA_FILE_CSV = 'data_responden.csv'
 ```
 
