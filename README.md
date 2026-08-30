@@ -8,10 +8,8 @@ Project ini adalah script otomatisasi berbasis Python dan Selenium untuk mengisi
 3. Google Chrome dan ChromeDriver terbaru.
 
 ## 📂 Struktur File Utama
-- `pretest.py`: Script untuk mengisi form pre-test (rentang nilai skala 1-3).
-- `posttest.py`: Script untuk mengisi form post-test (rentang nilai skala 3-5).
-- `main_copy.py`: Script untuk memproses data dari CSV dinamis (jawaban langsung disalin dari CSV).
-- `retry_failed.py`: Script khusus untuk mengulang nama-nama tertentu yang sebelumnya gagal.
+- `main.py`: Script utama untuk menjalankan otomatisasi pengisian Google Form.
+- `data_responden.csv`: Contoh file data responden sebagai sumber input (sesuaikan nama file di dalam script).
 
 ---
 
