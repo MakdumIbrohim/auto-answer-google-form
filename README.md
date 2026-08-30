@@ -98,17 +98,4 @@ klik_tombol(driver, "Kembali")
 klik_tombol(driver, "Kirim")
 ```
 
----
 
-## 🛑 Penanganan Logic Branching (Lompatan Bagian Google Form)
-Google form memuat halaman per-bagian (Section). Jika Anda membuat aturan "Jika memilih Siswa, langsung ke Submit", Google form **baru akan memprosesnya setelah tombol Berikutnya diklik**.
-
-Jika terjadi anomali (misal Siswa tetap disuruh masuk ke halaman khusus Guru), buat filter pencegat sebelum mengeksekusi klik skala:
-```python
-if status.lower() == 'guru':
-    # Jalankan klik untuk guru
-    isi_halaman_skala(driver)
-else:
-    print("Bukan guru, melewati pengisian halaman ini.")
-    # Biarkan kosong lalu eksekusi tombol Kirim di bawahnya
-```
