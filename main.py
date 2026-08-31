@@ -7,195 +7,135 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-
 from dotenv import load_dotenv
 
-# Muat variabel dari file .env
 load_dotenv()
 
-# ==========================================
-# PENGATURAN - EDIT SESUAI KEBUTUHAN ANDA
-# ==========================================
+FORM_LINK = os.getenv('FORM_LINK').strip() if os.getenv('FORM_LINK') else ''
+CSV_FILE_NAME = 'data_responden.csv'
+COL_NAME = 'nama'
+COL_GENDER = 'kelamin'
+WAIT_TIMEOUT = 10
 
-# URL Google Form yang ingin diisi diambil dari .env
-LINK_FORM = os.getenv('LINK_FORM')
+CHROME_OPTIONS = Options()
+CHROME_OPTIONS.add_argument("--start-maximized")
+CHROME_OPTIONS.add_argument("--no-sandbox")
+CHROME_OPTIONS.add_argument("--disable-dev-shm-usage")
+CHROME_OPTIONS.add_argument("--disable-gpu")
+CHROME_OPTIONS.add_argument("--remote-debugging-port=9222")
+# CHROME_OPTIONS.add_argument("--headless")
 
-# Nama file CSV yang berisi data responden
-NAMA_FILE_CSV = 'data_responden.csv'
+def create_driver():
+    """Create and return a new Chrome browser instance."""
+    return webdriver.Chrome(options=CHROME_OPTIONS)
 
-# Nama kolom di dalam file CSV (harus sesuai dengan header CSV)
-KOLOM_NAMA = 'nama'
-KOLOM_KELAMIN = 'kelamin'
-
-# ==========================================
-# PENGATURAN LANJUTAN (BIASANYA TIDAK PERLU DIUBAH)
-# ==========================================
-
-# Konfigurasi browser Chrome
-OPSI_CHROME = Options()
-OPSI_CHROME.add_argument("--start-maximized")
-# Hapus tanda # di bawah jika ingin browser tidak terbuka (background)
-# OPSI_CHROME.add_argument("--headless")
-
-# Batas waktu menunggu elemen form muncul (detik)
-BATAS_WAKTU = 10
-
-
-# ==========================================
-# FUNGSI-FUNGSI BANTUAN
-# ==========================================
-
-def buat_driver():
-    """Membuat browser Chrome baru."""
-    return webdriver.Chrome(options=OPSI_CHROME)
-
-
-def cek_file_csv(path_file):
-    """Memeriksa apakah file CSV tersedia."""
-    if not os.path.exists(path_file):
-        print(f"[ERROR] File CSV '{path_file}' tidak ditemukan!")
-        print("Pastikan file berada di folder yang sama dengan program ini.")
+def check_csv_file(file_path):
+    """Check if the CSV file exists before running the program."""
+    if not os.path.exists(file_path):
+        print(f"[ERROR] CSV file '{file_path}' not found!")
         exit()
 
-
-def baca_data_csv(path_file, kolom_nama, kolom_kelamin):
-    """Membaca data responden dari file CSV."""
+def read_csv_data(file_path, col_name, col_gender):
+    """Read and return respondent data from the CSV file as a list of dictionaries."""
     data = []
-    with open(path_file, mode='r', encoding='utf-8-sig') as file:
-        pembaca = csv.DictReader(file)
-        for baris in pembaca:
-            if baris[kolom_nama].strip():
+    with open(file_path, mode='r', encoding='utf-8-sig') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if row[col_name].strip():
                 data.append({
-                    'nama': baris[kolom_nama].strip(),
-                    'kelamin': baris[kolom_kelamin].strip().upper()
+                    'name': row[col_name].strip(),
+                    'gender': row[col_gender].strip().upper()
                 })
     return data
 
+def click_radio(driver, group_xpath, index):
+    """Click a specific radio button option in a group based on index."""
+    group = driver.find_elements(By.XPATH, group_xpath)
+    if group:
+        options = group[0].find_elements(By.XPATH, ".//div[@role='radio']")
+        if index < len(options):
+            driver.execute_script("arguments[0].click();", options[index])
 
-def klik_radio(driver, xpath_grup, index):
-    """Mengklik opsi radio button berdasarkan index."""
-    grup = driver.find_elements(By.XPATH, xpath_grup)
-    if grup:
-        opsi = grup[0].find_elements(By.XPATH, ".//div[@role='radio']")
-        if index < len(opsi):
-            driver.execute_script("arguments[0].click();", opsi[index])
+def click_random_radio(driver, group_xpath, index_options=None):
+    """Click a random radio button option in a group."""
+    group = driver.find_elements(By.XPATH, group_xpath)
+    if group:
+        options = group[0].find_elements(By.XPATH, ".//div[@role='radio']")
+        option_list = options if index_options is None else [options[i] for i in index_options if i < len(options)]
+        if option_list:
+            driver.execute_script("arguments[0].click();", random.choice(option_list))
 
+def click_button(driver, button_text):
+    """Click a button based on its displayed text (e.g., 'Berikutnya', 'Kirim')."""
+    xpath = f"//div[@role='button']//span[text()='{button_text}']"
+    button = driver.find_element(By.XPATH, xpath)
+    driver.execute_script("arguments[0].click();", button)
 
-def klik_radio_acak(driver, xpath_grup, indeks_opsi=None):
-    """Mengklik radio button secara acak."""
-    grup = driver.find_elements(By.XPATH, xpath_grup)
-    if grup:
-        opsi = grup[0].find_elements(By.XPATH, ".//div[@role='radio']")
-        daftar_opsi = opsi if indeks_opsi is None else [opsi[i] for i in indeks_opsi if i < len(opsi)]
-        if daftar_opsi:
-            driver.execute_script("arguments[0].click();", random.choice(daftar_opsi))
+def fill_questionnaire(url, user_data):
+    """Main function to navigate and fill out data on the Google Form."""
+    name = user_data['name']
+    gender = user_data['gender']
 
-
-def klik_tombol(driver, teks_tombol):
-    """Mengklik tombol berdasarkan teks yang ada di tombol."""
-    xpath = f"//div[@role='button']//span[text()='{teks_tombol}']"
-    tombol = driver.find_element(By.XPATH, xpath)
-    driver.execute_script("arguments[0].click();", tombol)
-
-
-# ==========================================
-# ISI KUESIONER
-# ==========================================
-
-def isi_kuesioner(url, data_user):
-    nama = data_user['nama']
-    kelamin = data_user['kelamin']
-
-    driver = buat_driver()
-    tunggu = WebDriverWait(driver, BATAS_WAKTU)
+    driver = create_driver()
+    wait = WebDriverWait(driver, WAIT_TIMEOUT)
 
     try:
-        # Buka form
         driver.get(url)
         time.sleep(3)
 
-        # ===== HALAMAN 1: IDENTITAS =====
-        print(f"[{nama}] Mengisi Halaman 1 (Data Diri)...")
+        print(f"[{name}] Filling Page 1 (Personal Data)...")
+        name_input = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//input[@type='text']")))
+        name_input[0].send_keys(name)
 
-        # Input nama
-        input_nama = tunggu.until(EC.presence_of_all_elements_located((By.XPATH, "//input[@type='text']")))
-        input_nama[0].send_keys(nama)
+        gender_index = 0 if gender == 'L' else 1
+        click_radio(driver, "//div[@role='radiogroup']", gender_index)
+        click_random_radio(driver, "//div[@role='radiogroup']")
+        click_radio(driver, "//div[@role='radiogroup']", 0)
 
-        # Pilih jenis kelamin (L = index 0, P = index 1)
-        index_kelamin = 0 if kelamin == 'L' else 1
-        klik_radio(driver, "//div[@role='radiogroup']", index_kelamin)
-
-        # Pilih usia secara acak
-        klik_radio_acak(driver, "//div[@role='radiogroup']")
-
-        # Pilih pernah akses (selalu Ya / index 0)
-        klik_radio(driver, "//div[@role='radiogroup']", 0)
-
-        # Klik tombol Berikutnya
-        klik_tombol(driver, "Berikutnya")
+        click_button(driver, "Berikutnya")
         time.sleep(2)
-        tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+        wait.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
 
-        # ===== HALAMAN 2: PERAN DAN INTERES =====
-        print(f"[{nama}] Mengisi Halaman 2...")
+        print(f"[{name}] Filling Page 2...")
+        click_radio(driver, "//div[@role='radiogroup']", 2)
 
-        # Pilih peran (Masyarakat Umum = index 2)
-        klik_radio(driver, "//div[@role='radiogroup']", 2)
+        checkboxes = driver.find_elements(By.XPATH, "//div[@role='checkbox']")
+        choices = random.sample(checkboxes, min(random.randint(1, 3), len(checkboxes)))
+        for box in choices:
+            driver.execute_script("arguments[0].click();", box)
 
-        # Pilih checkbox secara acak (1 sampai 3 pilihan)
-        kotak_centang = driver.find_elements(By.XPATH, "//div[@role='checkbox']")
-        pilihan = random.sample(kotak_centang, min(random.randint(1, 3), len(kotak_centang)))
-        for kotak in pilihan:
-            driver.execute_script("arguments[0].click();", kotak)
-
-        # Klik tombol Berikutnya
-        klik_tombol(driver, "Berikutnya")
+        click_button(driver, "Berikutnya")
         time.sleep(2)
-        tunggu.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
+        wait.until(EC.presence_of_element_located((By.XPATH, "//div[@role='radiogroup']")))
 
-        # ===== HALAMAN 3: SKALA UEQ =====
-        print(f"[{nama}] Mengisi Halaman 3 (Skala UEQ)...")
+        print(f"[{name}] Filling Page 3 (UEQ Scale)...")
+        scale_rows = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
+        for row in scale_rows:
+            options = row.find_elements(By.XPATH, ".//div[@role='radio']")
+            if options:
+                driver.execute_script("arguments[0].click();", random.choice(options))
 
-        baris_skala = driver.find_elements(By.XPATH, "//div[@role='radiogroup']")
-        for baris in baris_skala:
-            opsi = baris.find_elements(By.XPATH, ".//div[@role='radio']")
-            if opsi:
-                driver.execute_script("arguments[0].click();", random.choice(opsi))
-
-        # Klik tombol Kirim
-        klik_tombol(driver, "Kirim")
-
-        print(f"[SUKSES] Form atas nama '{nama}' BERHASIL dikirim!\n")
+        click_button(driver, "Kirim")
+        print(f"[SUCCESS] Form for '{name}' submitted SUCCESSFULLY!\n")
         time.sleep(3)
 
     except Exception as e:
-        print(f"[GAGAL] Error saat mengisi form untuk '{nama}'.")
-        print(f"Pesan Error: {e}")
-        print("Browser dibuka selama 30 detik untuk pengecekan...\n")
-        time.sleep(30)
+        print(f"[FAILED] Error while filling form for '{name}'.")
+        print(f"Error Message: {e}\n")
+        time.sleep(5)
 
     finally:
         driver.quit()
 
-
-# ==========================================
-# JALANKAN PROGRAM
-# ==========================================
-
 if __name__ == "__main__":
-    # Cek file CSV ada atau tidak
-    cek_file_csv(NAMA_FILE_CSV)
+    check_csv_file(CSV_FILE_NAME)
+    respondent_data = read_csv_data(CSV_FILE_NAME, COL_NAME, COL_GENDER)
 
-    # Baca data responden
-    data_responden = baca_data_csv(NAMA_FILE_CSV, KOLOM_NAMA, KOLOM_KELAMIN)
+    print(f"[INFO] Found {len(respondent_data)} respondents. Starting automation...\n")
 
-    print(f"[INFO] Ditemukan {len(data_responden)} responden. Memulai otomatisasi...\n")
-
-    # Isi form untuk setiap responden
-    for nomor, data in enumerate(data_responden, 1):
-        print(f"--- Responden {nomor}/{len(data_responden)} ---")
-        isi_kuesioner(LINK_FORM, data)
+    for number, data in enumerate(respondent_data, 1):
+        print(f"--- Respondent {number}/{len(respondent_data)} ---")
+        fill_questionnaire(FORM_LINK, data)
         time.sleep(2)
 
-    print("[SELESAI] Semua data telah diproses.")
-    input("Tekan Enter untuk keluar...")
+    print("[COMPLETED] All data has been processed.")
