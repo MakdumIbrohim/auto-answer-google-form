@@ -2,12 +2,12 @@
 
 Project ini adalah script otomatisasi berbasis Python dan Selenium untuk mengisi kuesioner Google Form (Pre-test, Post-test, SUS) secara otomatis membaca data dari file CSV.
 
-## 🚀 Persyaratan Sistem
+## Persyaratan Sistem
 Sebelum menggunakan project ini, pastikan komputer Anda memiliki:
 1. **Python 3.x** sudah terinstal.
 2. Browser **Google Chrome** versi terbaru.
 
-## 📂 Struktur File Utama
+## Struktur File Utama
 - `main.py`: Script utama otomatisasi pengisian form.
 - `data_responden.csv`: Contoh file data responden.
 - `.env.example`: Contoh format konfigurasi tautan (link).
@@ -15,7 +15,7 @@ Sebelum menggunakan project ini, pastikan komputer Anda memiliki:
 
 ---
 
-## 🛠️ TUTORIAL PENGGUNAAN TAHAP DEMI TAHAP
+## TUTORIAL PENGGUNAAN TAHAP DEMI TAHAP
 
 Ikuti panduan berikut dari awal hingga program berhasil dijalankan.
 
@@ -52,7 +52,7 @@ Eksekusi script utama:
 python3 main.py
 ```
 
-## 🛠️ PANDUAN MODIFIKASI KODE (CARA MENGUBAH INPUT)
+## PANDUAN MODIFIKASI KODE (CARA MENGUBAH INPUT)
 
 Jika form Anda memiliki pertanyaan yang baru atau tata letaknya berubah, berikut adalah referensi kode ("cheat sheet") untuk melakukan modifikasi di dalam script.
 
@@ -130,12 +130,12 @@ click_button(driver, "Kirim")
 
 This project is a Python and Selenium-based automation script for automatically filling out Google Form questionnaires (Pre-test, Post-test, SUS) by reading data from a CSV file.
 
-## 🚀 System Requirements
+## System Requirements
 Before using this project, ensure your computer has:
 1. **Python 3.x** installed.
 2. The latest version of the **Google Chrome** browser.
 
-## 📂 Main File Structure
+## Main File Structure
 - `main.py`: The core script for form filling automation.
 - `data_responden.csv`: Sample respondent data file.
 - `.env.example`: Example format for link configuration.
@@ -143,7 +143,7 @@ Before using this project, ensure your computer has:
 
 ---
 
-## 🛠️ STEP-BY-STEP USAGE TUTORIAL
+## STEP-BY-STEP USAGE TUTORIAL
 
 Follow this guide from scratch until the program runs successfully.
 
@@ -180,7 +180,7 @@ Execute the main script:
 python3 main.py
 ```
 
-## 🛠️ CODE MODIFICATION GUIDE (HOW TO CHANGE INPUTS)
+## CODE MODIFICATION GUIDE (HOW TO CHANGE INPUTS)
 
 If your form has new questions or the layout changes, here is a code reference ("cheat sheet") for making modifications in the script.
 
